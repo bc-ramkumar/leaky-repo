@@ -39,7 +39,7 @@ jobs:
                         "fields": [
                           {
                             "type": "plain_text",
-                            "text": "Talisman Scan completed ",
+                            "text": "Talisman Scan completed. :white_check_mark:",
                             "emoji": true
                           }
                         ]
