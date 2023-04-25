@@ -6,9 +6,6 @@ jobs:
   talisman:
     docker:
       - image: rameinstein/talisman:talisman
-        auth:
-          username: rameinstein  # can specify string literal values
-          password: LqwBTW@20915
     environment:
       TALISMAN_HOME: /root/.talisman/bin
       TALISMAN_INTERACTIVE: false
