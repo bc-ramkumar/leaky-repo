@@ -59,7 +59,7 @@ jobs:
       - run:
           name: Get Report Url From Artifacts
           command: |
-            ARTIFACTS_URL="https://circleci.com/api/v2/project/gh/bigcommerce/bc-mobile-android/$CIRCLE_BUILD_NUM/artifacts"
+            ARTIFACTS_URL="https://circleci.com/api/v2/project/github/bc-ramkumar/leaky-repo/$CIRCLE_BUILD_NUM/artifacts"
             echo "Using artifacts url: $ARTIFACTS_URL"
             JSON=$(curl -s -H "Circle-Token: $CIRCLE_TOKEN" -H "Accept: application/json" "$ARTIFACTS_URL")
             echo "$JSON"
