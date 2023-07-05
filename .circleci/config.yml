@@ -5,7 +5,10 @@ orbs:
 jobs:
   talisman:
     docker:
-      - image: rameinstein/talisman:talisman
+      - image: rameinstein/talisman:ubuntu-talismancp
+        auth:
+             username: rameinstein
+             password: BCtalsimanScan2023
     environment:
       TALISMAN_HOME: /root/.talisman/bin
       TALISMAN_INTERACTIVE: false
