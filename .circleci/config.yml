@@ -18,62 +18,110 @@ jobs:
       - jq/install
       - run:
           name: Check Talisman
-          command: $TALISMAN_HOME/talisman_linux_amd64 --scan || echo "done" # I've added --ignoreHistory to the end here 
+          command: |
+            $TALISMAN_HOME/talisman_linux_amd64 --ignoreHistory -w || true # I've added --ignoreHistory to the end here 
+            mkdir ~/talisman_report
+            cd talisman_html_report
+            zip -r report.zip *
+            which jq
+            echo "$(jq --version)"
+            TALISMAN_SUMMARY_OBJ=$(jq '.summary' data/report.json)
+            echo $TALISMAN_SUMMARY_OBJ
+            TALISMAN_FILECONTENT=$(echo "$TALISMAN_SUMMARY_OBJ" | jq '.types.filecontent')
+            FILE_CONTENT_FORMATTED=$(echo "$TALISMAN_FILECONTENT" | awk '{printf "%\047d\n", $1}')
+            TALISMAN_FILESIZE=$(echo "$TALISMAN_SUMMARY_OBJ" | jq '.types.filesize')
+            FILE_SIZE_FORMATTED=$(echo "$TALISMAN_FILESIZE" | awk '{printf "%\047d\n", $1}')
+            TALISMAN_FILENAME=$(echo "$TALISMAN_SUMMARY_OBJ" | jq '.types.filename')
+            FILE_NAME_FORMATTED=$(echo "$TALISMAN_FILENAME" | awk '{printf "%\047d\n", $1}')
+            TALISMAN_WARNINGS=$(echo "$TALISMAN_SUMMARY_OBJ" | jq '.types.warnings')
+            WARNINGS_FORMATTED=$(echo "$TALISMAN_WARNINGS" | awk '{printf "%\047d\n", $1}')
+            echo "export TALISMAN_FILECONTENT=${FILE_CONTENT_FORMATTED}" >> $BASH_ENV
+            echo "$TALISMAN_FILECONTENT"
+            echo "export TALISMAN_FILESIZE=${FILE_SIZE_FORMATTED}" >> $BASH_ENV
+            echo "$TALISMAN_FILESIZE"
+            echo "export TALISMAN_FILENAME=${FILE_NAME_FORMATTED}" >> $BASH_ENV
+            echo "$TALISMAN_FILENAME"
+            echo "export TALISMAN_WARNINGS=${WARNINGS_FORMATTED}" >> $BASH_ENV
+            echo "$TALISMAN_WARNINGS"
+            # fix js and css files to run from CircleCI artifacts
+            cd js
+            awk '{sub("../data","data")} {print}' parser.js > tmp.txt && mv tmp.txt parser.js
+            awk '{sub("../data","data")} {print}' main.js > tmp.txt && mv tmp.txt main.js
+            cd ~/project
       - store_artifacts:
-          path: talisman_report/talisman_reports/data
+          path: talisman_html_report
           destination: talisman_report
       - run:
-          name: Artifacts
-          command: | 
-            ARTIFACT=$(curl -X GET "https://circleci.com/api/v2/project/github/bc-ramkumar/leaky-repo/$CIRCLE_BUILD_NUM/artifacts" \
-            -H "Accept: application/json" \
-            -u "$CIRCLE_API_TOKEN:" | jq ".items[].url")  
+          name: Get Report Url From Artifacts
+          command: |
+            ARTIFACTS_URL="https://circleci.com/api/v2/project/gh/bigcommerce/bc-mobile-android/$CIRCLE_BUILD_NUM/artifacts"
+            echo "Using artifacts url: $ARTIFACTS_URL"
+            JSON=$(curl -s -H "Circle-Token: $CIRCLE_TOKEN" -H "Accept: application/json" "$ARTIFACTS_URL")
+            echo "$JSON"
+            ARTIFACT=$(echo "$JSON" | jq -r '.items[] | select(.path == "talisman_report/index.html") | .url')
+            echo "Report URL:"
             echo $ARTIFACT
+            echo "Exporting url to bash env"
             echo "export ARTIFACTS=${ARTIFACT}" >> $BASH_ENV
             echo ${ARTIFACTS}
+            echo "finished"
             
     
       - slack/notify:               
-                custom: |
-                  {
-                    "blocks": [
-                      {
-                        "type": "section",
-                        "fields": [
-                          {
-                            "type": "plain_text",
-                            "text": "Talisman Scan completed. :white_check_mark:",
-                            "emoji": true
-                          }
-                        ]
-                      },
-                      {
-                        "type": "actions",
-                        "elements": [
-                          {
-                            "type": "button",
-                            "action_id": "success_tagged_deploy_view",
-                            "text": {
-                              "type": "plain_text",
-                              "text": "View Job"
-                            },
-                            "url": "${CIRCLE_BUILD_URL}"
-                          },
-                           {
-                            "type": "button",
-                            "action_id": "success_tagged_deploy_views",
-                            "text": {
-                              "type": "plain_text",
-                              "text": "View Artifact URL"
-                            },
-                            "url": "${ARTIFACTS}"      
-                                    
-                          }
-                        ]
-                      }
-                    ]
+          custom: |
+            {
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Github Secrets Scanner\n"
                   }
-                event: always
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    {
+                      "type": "plain_text",
+                      "text": "bc-mobile-android",
+                      "emoji": true
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*File Content Errors:*\t | $TALISMAN_FILECONTENT\n*Filename Error*\t\t\t | $TALISMAN_FILENAME\n*Warnings*\t\t\t\t\t | $TALISMAN_WARNINGS"
+                  }
+                },
+                {
+                  "type": "actions",
+                  "elements": [
+                    {
+                      "type": "button",
+                      "action_id": "success_tagged_deploy_views",
+                      "text": {
+                        "type": "plain_text",
+                        "text": "View Report"
+                      },
+                      "url": "$ARTIFACTS"
+                    },
+                    {
+                      "type": "button",
+                      "action_id": "success_tagged_deploy_view",
+                      "text": {
+                        "type": "plain_text",
+                        "text": "View Job"
+                      },
+                      "url": "$CIRCLE_BUILD_URL"
+                    }
+                  ]
+                }
+              ]
+            }
+
+          event: always
            
 workflows:
   send-notification:
